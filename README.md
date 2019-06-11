@@ -28,3 +28,11 @@ Create new conda environment with python:
 - cd donkey_rl/src/donkey_gym
 
 - pip install -e .
+
+
+
+# Run instructions:
+
+- DonkeyCar.ipynb contains the main algorithm and parameter configurations.
+- Run all cells to train the model.
+- Open the unity simulator while training/testing to see the progress run simulated on the unity simulator.
