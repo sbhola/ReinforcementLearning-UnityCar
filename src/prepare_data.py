@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+'''
+Prepare Data:
+Move log data into place for training
+'''
 from __future__ import print_function
 import os
 import time
