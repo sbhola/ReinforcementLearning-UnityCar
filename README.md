@@ -1,5 +1,6 @@
 # Environment setup instructions for running Jupyter Notebook for Donkey Car Simulator Training
 
+The following sequence of steps are to be followed to setup the environment for running donkey car simulator either on cloud or on local machine.
 
 Create new conda environment with python:  
 - conda create -n donkeygym python
