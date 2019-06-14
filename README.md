@@ -49,3 +49,5 @@ python predict_server.py --model ../save_model/aws.h5
 2) Load the Unity project sdsandbox/sdsim in Unity. Double click on Assets/Scenes/main to open that scene.  
 
 3) Hit the start button to launch. Then the "Use NN Steering".  
+You will see the output in unity like below:
+![DEMO](demo.gif)
