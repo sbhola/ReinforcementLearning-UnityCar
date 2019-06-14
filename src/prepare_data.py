@@ -2,6 +2,7 @@
 '''
 Prepare Data:
 Move log data into place for training
+Author: Tawn Kramer
 '''
 from __future__ import print_function
 import os
