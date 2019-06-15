@@ -43,8 +43,6 @@ public class PIDController : MonoBehaviour {
 
 	public bool brakeOnEnd = true;
 
-    public bool looping = false;
-
 	public bool doDrive = true;
 	public float maxSpeed = 5.0f;
 
@@ -59,23 +57,6 @@ public class PIDController : MonoBehaviour {
     {
         if (startOnWake)
             StartDriving();
-
-        LoadPrefs();
-    }
-
-    public void LoadPrefs()
-    {
-        maxSpeed = PlayerPrefs.GetFloat("max_speed", maxSpeed);
-        Kp = PlayerPrefs.GetFloat("pid_prop", Kp);
-        Kd = PlayerPrefs.GetFloat("pid_diff", Kd);
-    }
-
-    public void SavePrefs()
-    {
-        PlayerPrefs.SetFloat("max_speed", maxSpeed);
-        PlayerPrefs.SetFloat("pid_prop", Kp);
-        PlayerPrefs.SetFloat("pid_diff", Kd);
-        PlayerPrefs.Save();
     }
 
     private void OnDisable()
@@ -165,11 +146,7 @@ public class PIDController : MonoBehaviour {
 
 		if(!pm.path.GetCrossTrackErr(samplePos, ref err))
 		{
-            if(looping)
-            {
-                pm.path.ResetActiveSpan();
-            }
-			else if(brakeOnEnd)
+			if(brakeOnEnd)
 			{
 				car.RequestFootBrake(1.0f);
 
@@ -195,8 +172,6 @@ public class PIDController : MonoBehaviour {
 		diffErr = err - prevErr;
 
 		steeringReq = (-Kp * err) - (Kd * diffErr) - (Ki * totalError);
-
-		steeringReq = Mathf.Clamp(steeringReq, -car.GetMaxSteering(), car.GetMaxSteering());
 
 		if(doDrive)
 			car.RequestSteering(steeringReq);

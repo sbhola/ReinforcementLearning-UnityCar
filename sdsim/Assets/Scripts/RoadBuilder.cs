@@ -77,12 +77,6 @@ public class RoadBuilder : MonoBehaviour {
 
 	public void InitRoad(CarPath path)
 	{
-        if(path == null)
-        {
-            Debug.LogWarning("No path in RoadBuilder::InitRoad");
-            return;
-        }
-
 		if(terToolkit != null && doFlattenAtStart)
 		{
 			terToolkit.Flatten();

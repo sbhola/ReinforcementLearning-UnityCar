@@ -25,14 +25,18 @@ public class DonkeyRecord
     public string cam_image_array;
     public float user_throttle;
     public float user_angle;
-    public string user_mode;    
+    public string user_mode; 
+    public int track_lap;
+    public int track_loc;
 
-    public void Init(string image_name, float throttle, float angle, string mode)
+    public void Init(string image_name, float throttle, float angle, string mode, int lap, int loc)
     {
         cam_image_array = image_name;
         user_throttle = throttle;
         user_angle = angle;
         user_mode = mode;
+        track_lap = lap;
+        track_loc = loc;
     }
 
     public string AsString()
@@ -44,6 +48,9 @@ public class DonkeyRecord
         json = json.Replace("user_throttle", "user/throttle");
         json = json.Replace("user_angle", "user/angle");
         json = json.Replace("user_mode", "user/mode");
+        json = json.Replace("track_lap", "track/lap");
+        json = json.Replace("track_lap", "track/lap");
+        json = json.Replace("track_loc", "track/loc");
 
         return json;
     }
@@ -58,6 +65,9 @@ public class Logger : MonoBehaviour {
 
 	//what's the current frame index
     public int frameCounter = 0;
+
+    //which lap
+    public int lapCounter = 0;
 
 	//is there an upper bound on the number of frames to log
 	public int maxFramesToLog = 14000;
@@ -83,7 +93,7 @@ public class Logger : MonoBehaviour {
 
     public Text logDisplay;
 
-	string outputFilename = "/../log/log_car_controls.txt";
+	string outputFilename = "log_car_controls.txt";
 	private StreamWriter writer;
 
 	class ImageSaveJob {
@@ -95,6 +105,14 @@ public class Logger : MonoBehaviour {
 
 	Thread thread;
 
+    string GetLogPath()
+    {
+        if(GlobalState.log_path != "default")
+            return GlobalState.log_path + "/";
+
+        return Application.dataPath + "/../log/";
+    }
+
 	void Awake()
 	{
 		car = carObj.GetComponent<ICar>();
@@ -103,10 +121,10 @@ public class Logger : MonoBehaviour {
 		{
 			if(UdacityStyle)
 			{
-				outputFilename = "/../log/driving_log.csv";
+				outputFilename = "driving_log.csv";
 			}
 
-			string filename = Application.dataPath + outputFilename;
+			string filename = GetLogPath() + outputFilename;
 
 			writer = new StreamWriter(filename);
 
@@ -120,17 +138,22 @@ public class Logger : MonoBehaviour {
             if(DonkeyStyle2)
             {
                 MetaJson mjson = new MetaJson();
-                string[] inputs = {"cam/image_array", "user/angle", "user/throttle", "user/mode"};
-                string[] types = {"image_array", "float", "float", "str"};
+                string[] inputs = {"cam/image_array", "user/angle", "user/throttle", "user/mode", "track/lap", "track/loc"};
+                string[] types = {"image_array", "float", "float", "str", "int", "int"};
                 mjson.Init(inputs, types);
                 string json = JsonUtility.ToJson(mjson);
-				var f = File.CreateText(Application.dataPath + "/../log/meta.json");
+				var f = File.CreateText(GetLogPath() + "meta.json");
 				f.Write(json);
 				f.Close();
             }
 		}
 
-		imagesToSave = new List<ImageSaveJob>();
+        Canvas canvas = GameObject.FindObjectOfType<Canvas>();
+        GameObject go = CarSpawner.getChildGameObject(canvas.gameObject, "LogCount");
+        if (go != null)
+            logDisplay = go.GetComponent<Text>();
+
+        imagesToSave = new List<ImageSaveJob>();
 
 		thread = new Thread(SaverThread);
 		thread.Start();
@@ -157,7 +180,9 @@ public class Logger : MonoBehaviour {
 			{
 				string image_filename = GetUdacityStyleImageFilename();
 				float steering = car.GetSteering() / car.GetMaxSteering();
-				writer.WriteLine(string.Format("{0},{1},{2},{3},{4},{5},{6}", image_filename, "none", "none", steering.ToString(), car.GetThrottle().ToString(), "0", "0"));
+				writer.WriteLine(string.Format("{0},{1},{2},{3},{4},{5},{6},{7}", image_filename, 
+                    "none", "none", steering.ToString(), 
+                    car.GetThrottle().ToString(), "0", "0", lapCounter));
 			}
             else if(DonkeyStyle || SharkStyle)
             {
@@ -167,17 +192,18 @@ public class Logger : MonoBehaviour {
             {
                 DonkeyRecord mjson = new DonkeyRecord();
                 float steering = car.GetSteering() / car.GetMaxSteering();
-                float throttle = car.GetThrottle();
+                float throttle = car.GetThrottle() * 10.0f;
+                int loc = 0;
 
                 //training code like steering clamped between -1, 1
                 steering = Mathf.Clamp(steering, -1.0f, 1.0f);
 
                 mjson.Init(string.Format("{0}_cam-image_array_.jpg", frameCounter),
-                    throttle, steering, "user");
+                    throttle, steering, "user", lapCounter, loc);
 
                 string json = mjson.AsString();
                 string filename = string.Format("record_{0}.json", frameCounter);
-				var f = File.CreateText(Application.dataPath + "/../log/" + filename);
+				var f = File.CreateText(GetLogPath() + filename);
 				f.Write(json);
 				f.Close();
             }
@@ -194,8 +220,8 @@ public class Logger : MonoBehaviour {
 			if(pa != null)
 			{
 				string json = JsonUtility.ToJson(pa);
-				var filename = string.Format("/../log/lidar_{0}_{1}.txt", frameCounter.ToString(), activity);
-				var f = File.CreateText(Application.dataPath + filename);
+				var filename = string.Format("lidar_{0}_{1}.txt", frameCounter.ToString(), activity);
+				var f = File.CreateText(GetLogPath() + filename);
 				f.Write(json);
 				f.Close();
 			}
@@ -225,28 +251,28 @@ public class Logger : MonoBehaviour {
 
 	string GetUdacityStyleImageFilename()
 	{
-		return Application.dataPath + string.Format("/../log/IMG/center_{0,8:D8}.jpg", frameCounter);
+		return GetLogPath() + string.Format("IMG/center_{0,8:D8}.jpg", frameCounter);
 	}
 
     string GetDonkeyStyleImageFilename()
     {
-        float steering = car.GetSteering() / 25.0f;
+        float steering = car.GetSteering() / car.GetMaxSteering();
         float throttle = car.GetThrottle();
-        return Application.dataPath + string.Format("/../log/frame_{0,6:D6}_ttl_{1}_agl_{2}_mil_0.0.jpg", 
+        return GetLogPath() + string.Format("frame_{0,6:D6}_ttl_{1}_agl_{2}_mil_0.0.jpg", 
             frameCounter, throttle, steering);
     }
 
 	string GetSharkStyleImageFilename()
     {
-        int steering = (int)(car.GetSteering() / 25.0f * 32768.0f);
+        int steering = (int)(car.GetSteering() / car.GetMaxSteering() * 32768.0f);
         int throttle = (int)(car.GetThrottle() * 32768.0f);
-        return Application.dataPath + string.Format("/../log/frame_{0,6:D6}_st_{1}_th_{2}.jpg", 
+        return GetLogPath() + string.Format("frame_{0,6:D6}_st_{1}_th_{2}.jpg", 
             frameCounter, steering, throttle);
     }
 
     string GetDonkey2StyleImageFilename()
     {
-        return Application.dataPath + string.Format("/../log/{0}_cam-image_array_.jpg", frameCounter);
+        return GetLogPath() + string.Format("{0}_cam-image_array_.jpg", frameCounter);
     }
 
     //Save the camera sensor to an image. Use the suffix to distinguish between cameras.
@@ -284,7 +310,7 @@ public class Logger : MonoBehaviour {
             }
 			else
 			{
-            	ij.filename = Application.dataPath + string.Format("/../log/{0}_{1,8:D8}{2}.png", prefix, frameCounter, suffix);
+            	ij.filename = GetLogPath() + string.Format("{0}_{1,8:D8}{2}.png", prefix, frameCounter, suffix);
 
             	ij.bytes = image.EncodeToPNG();
 			}
@@ -345,3 +371,4 @@ public class Logger : MonoBehaviour {
 		Shutdown();
 	}
 }
+
